@@ -1,0 +1,34 @@
+---
+description: 
+globs: *.go
+alwaysApply: false
+---
+---
+
+description: Enforce Go vertical slice architecture, clean patterns, and infrastructure conventions
+globs:
+
+* "**\*.go"
+  alwaysApply: true
+
+---
+
+* Organize code using a **vertical slice architecture**, with each feature in its own slice directory (`/features/<feature>/...`).
+* Use **sqlx** with **PostgreSQL** for all database interactions in the data layer.
+* Apply a **simplified Clean Architecture** variant:
+
+  * **Router**: Handles HTTP requests and routes them to controllers (e.g., Echo router configuration).
+  * **Controllers**: Implement business logic and orchestrate interactions between layers.
+  * **Data Layer**: Expose simple functions using sqlx to query and modify PostgreSQL.
+* Pass a **`context.Context`** through the main path of each vertical slice; include in it:
+
+  * A **`slog`** logger instance for structured logging.
+  * An **`*sqlx.DB`** connection for database access.
+* Store reusable infrastructure code under an **`internal/`** package at the root of the application:
+
+  * Database access abstractions and migrations.
+  * Logger instantiation and configuration.
+* Manage database schema changes using **go-migrate** (aka golang-migrate).
+* Use **Echo** as the HTTP framework for routing and middleware.
+* Generate API boilerplate with **oapi-codegen**, following an **API-first** workflow.
+* Begin development by designing your OpenAPI specification, then generate handlers and models.
