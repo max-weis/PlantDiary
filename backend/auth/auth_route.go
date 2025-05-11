@@ -86,9 +86,7 @@ func (a *authRouter) Signup(ctx echo.Context) error {
 		return echo.NewHTTPError(500, "Failed to create user")
 	}
 
-	// TODO: Save user to database
-	// For now return mock response
-	return ctx.JSON(201, nil)
+	return ctx.NoContent(201)
 }
 
 // Me implements ServerInterface.
