@@ -1,5 +1,4 @@
-import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
-import { Leaf } from "lucide-react"
+import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/dashboard')({
   component: RouteComponent,
