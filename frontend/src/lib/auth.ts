@@ -70,7 +70,6 @@ export function useAuth() {
           exp: decoded.exp,
         });
       } catch (err) {
-        console.error('Failed to decode JWT', err);
         setUser(null);
       }
       
@@ -107,14 +106,12 @@ export function useAuth() {
             exp: decoded.exp,
           });
         } catch (e) {
-          console.error('Failed to decode token after login', e);
           setUser(null);
         }
       }
       
       setLoading(false);
     } catch (err) {
-      console.error('Login failed:', err);
       setLoading(false);
     }
   }, [apiLogin]);
@@ -127,7 +124,6 @@ export function useAuth() {
       await apiSignup(creds);
       await login(email, password);
     } catch (err) {
-      console.error('Signup failed:', err);
       setLoading(false);
     }
   }, [apiSignup, login]);
