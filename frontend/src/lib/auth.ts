@@ -10,7 +10,14 @@ export function useAuth() {
 
   const { data: user, isLoading } = useQuery({
     queryKey: ['auth', 'me'],
-    queryFn: () => fetch('http://localhost:8000/api/me', { credentials: 'include' }).then(res => res.json()),
+    queryFn: () => fetch('http://localhost:8000/api/me', { 
+      credentials: 'include'  // This ensures cookies are sent
+    }).then(res => {
+      if (!res.ok) {
+        throw new Error('Not authenticated')
+      }
+      return res.json()
+    }),
     retry: false,
   })
 

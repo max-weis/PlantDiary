@@ -8,10 +8,6 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-const (
-	CookieAuthScopes = "cookieAuth.Scopes"
-)
-
 // Error defines model for Error.
 type Error struct {
 	Error *string `json:"error,omitempty"`
@@ -29,10 +25,10 @@ type SignupRequest struct {
 	Password string              `json:"password"`
 }
 
-// User defines model for User.
-type User struct {
-	Email *openapi_types.Email `json:"email,omitempty"`
-	Id    *openapi_types.UUID  `json:"id,omitempty"`
+// TokenResponse defines model for TokenResponse.
+type TokenResponse struct {
+	AccessToken  *string `json:"access_token,omitempty"`
+	RefreshToken *string `json:"refresh_token,omitempty"`
 }
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
@@ -46,9 +42,12 @@ type ServerInterface interface {
 	// Authenticate a user and set session cookie
 	// (POST /api/login)
 	Login(ctx echo.Context) error
-	// Get current authenticated user
-	// (GET /api/me)
-	Me(ctx echo.Context) error
+	// Logout user and invalidate refresh token
+	// (POST /api/logout)
+	Logout(ctx echo.Context) error
+	// Refresh access token using refresh token
+	// (POST /api/refresh)
+	RefreshToken(ctx echo.Context) error
 	// Register a new user
 	// (POST /api/signup)
 	Signup(ctx echo.Context) error
@@ -68,14 +67,21 @@ func (w *ServerInterfaceWrapper) Login(ctx echo.Context) error {
 	return err
 }
 
-// Me converts echo context to params.
-func (w *ServerInterfaceWrapper) Me(ctx echo.Context) error {
+// Logout converts echo context to params.
+func (w *ServerInterfaceWrapper) Logout(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(CookieAuthScopes, []string{})
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.Logout(ctx)
+	return err
+}
+
+// RefreshToken converts echo context to params.
+func (w *ServerInterfaceWrapper) RefreshToken(ctx echo.Context) error {
+	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.Me(ctx)
+	err = w.Handler.RefreshToken(ctx)
 	return err
 }
 
@@ -117,7 +123,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.POST(baseURL+"/api/login", wrapper.Login)
-	router.GET(baseURL+"/api/me", wrapper.Me)
+	router.POST(baseURL+"/api/logout", wrapper.Logout)
+	router.POST(baseURL+"/api/refresh", wrapper.RefreshToken)
 	router.POST(baseURL+"/api/signup", wrapper.Signup)
 
 }

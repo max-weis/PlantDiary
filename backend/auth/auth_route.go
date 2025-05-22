@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/max-weis/plantdiary/internal/config"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -19,10 +18,11 @@ type authRouter struct {
 
 type claims struct {
 	UserID string `json:"user_id"`
+	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
 
-// Login implements ServerInterface.
+// Login signs up a user and returns a JWT in a cookie
 func (a *authRouter) Login(ctx echo.Context) error {
 	var req LoginRequest
 	if err := ctx.Bind(&req); err != nil {
@@ -41,30 +41,141 @@ func (a *authRouter) Login(ctx echo.Context) error {
 		return echo.NewHTTPError(401, "Invalid credentials")
 	}
 
-	// Create JWT
-	exp := time.Now().Add(24 * time.Hour)
-	claims := &claims{
+	// Create access token
+	accessExp := time.Now().Add(15 * time.Minute)
+	accessClaims := &claims{
 		UserID: user.ID,
+		Email:  user.Email,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(exp),
+			ExpiresAt: jwt.NewNumericDate(accessExp),
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tString, err := token.SignedString(a.jwtKey)
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
+	accessTokenString, err := accessToken.SignedString(a.jwtKey)
 	if err != nil {
-		return echo.NewHTTPError(500, "Failed to create JWT")
+		return echo.NewHTTPError(500, "Failed to create access token")
 	}
 
-	// create cookie
+	// Create refresh token
+	refreshToken := uuid.New().String()
+	refreshExp := time.Now().Add(7 * 24 * time.Hour) // 7 days
+	refreshTokenEntity := &refreshTokenEntity{
+		Token:     refreshToken,
+		UserID:    user.ID,
+		ExpiresAt: refreshExp,
+	}
+	if err := StoreRefreshToken(ctx.Request().Context(), refreshTokenEntity); err != nil {
+		return echo.NewHTTPError(500, "Failed to store refresh token")
+	}
+
+	// Set access token cookie
 	cookie := new(http.Cookie)
-	cookie.Name = "token"
-	cookie.Value = tString
-	cookie.Expires = exp
+	cookie.Name = "access_token"
+	cookie.Value = accessTokenString
+	cookie.Expires = accessExp
+	cookie.HttpOnly = true
+	cookie.Secure = true
+	cookie.SameSite = http.SameSiteStrictMode
 	ctx.SetCookie(cookie)
 
-	return ctx.JSON(200, nil)
+	// Set refresh token cookie
+	refreshCookie := new(http.Cookie)
+	refreshCookie.Name = "refresh_token"
+	refreshCookie.Value = refreshToken
+	refreshCookie.Expires = refreshExp
+	refreshCookie.HttpOnly = true
+	refreshCookie.Secure = true
+	refreshCookie.SameSite = http.SameSiteStrictMode
+	ctx.SetCookie(refreshCookie)
+
+	return ctx.JSON(200, TokenResponse{
+		AccessToken:  &accessTokenString,
+		RefreshToken: &refreshToken,
+	})
 }
 
+// RefreshToken refreshes an access token using a refresh token
+func (a *authRouter) RefreshToken(ctx echo.Context) error {
+	refreshToken, err := ctx.Cookie("refresh_token")
+	if err != nil {
+		return echo.NewHTTPError(401, "No refresh token")
+	}
+
+	// Get refresh token from database
+	rt, err := GetRefreshToken(ctx.Request().Context(), refreshToken.Value)
+	if err != nil {
+		return echo.NewHTTPError(401, "Invalid refresh token")
+	}
+
+	// Get user
+	user, err := GetUserByID(ctx.Request().Context(), rt.UserID)
+	if err != nil {
+		return echo.NewHTTPError(404, "User not found")
+	}
+
+	// Create new access token
+	accessExp := time.Now().Add(15 * time.Minute)
+	accessClaims := &claims{
+		UserID: user.ID,
+		Email:  user.Email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(accessExp),
+		},
+	}
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
+	accessTokenString, err := accessToken.SignedString(a.jwtKey)
+	if err != nil {
+		return echo.NewHTTPError(500, "Failed to create access token")
+	}
+
+	// Set new access token cookie
+	cookie := new(http.Cookie)
+	cookie.Name = "access_token"
+	cookie.Value = accessTokenString
+	cookie.Expires = accessExp
+	cookie.HttpOnly = true
+	cookie.Secure = true
+	cookie.SameSite = http.SameSiteStrictMode
+	ctx.SetCookie(cookie)
+
+	return ctx.JSON(200, TokenResponse{
+		AccessToken: &accessTokenString,
+	})
+}
+
+// Logout invalidates a refresh token
+func (a *authRouter) Logout(ctx echo.Context) error {
+	refreshToken, err := ctx.Cookie("refresh_token")
+	if err != nil {
+		return echo.NewHTTPError(401, "No refresh token")
+	}
+
+	if err := DeleteRefreshToken(ctx.Request().Context(), refreshToken.Value); err != nil {
+		return echo.NewHTTPError(500, "Failed to delete refresh token")
+	}
+
+	// Clear cookies
+	ctx.SetCookie(&http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+	ctx.SetCookie(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	return ctx.NoContent(200)
+}
+
+// Signup creates a new user
 func (a *authRouter) Signup(ctx echo.Context) error {
 	var req SignupRequest
 	if err := ctx.Bind(&req); err != nil {
@@ -87,51 +198,6 @@ func (a *authRouter) Signup(ctx echo.Context) error {
 	}
 
 	return ctx.NoContent(201)
-}
-
-// Me implements ServerInterface.
-func (a *authRouter) Me(ctx echo.Context) error {
-	// Get token from cookie
-	cookie, err := ctx.Cookie("token")
-	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "Not authenticated")
-	}
-
-	// Parse and validate token
-	token, err := jwt.ParseWithClaims(cookie.Value, &claims{}, func(token *jwt.Token) (interface{}, error) {
-		return a.jwtKey, nil
-	})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token")
-	}
-
-	// Get claims
-	claims, ok := token.Claims.(*claims)
-	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token claims")
-	}
-
-	// Get user from database
-	user, err := GetUserByID(ctx.Request().Context(), claims.UserID)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, "User not found")
-	}
-
-	// Parse UUID
-	parsedUUID, err := uuid.Parse(user.ID)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "Invalid user ID format")
-	}
-
-	// Convert to OpenAPI types
-	userID := openapi_types.UUID(parsedUUID)
-	userEmail := openapi_types.Email(user.Email)
-
-	// Return user info
-	return ctx.JSON(http.StatusOK, User{
-		Id:    &userID,
-		Email: &userEmail,
-	})
 }
 
 func NewAuthRouter(cfg *config.Config, e *echo.Echo) ServerInterface {

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/lib/pq"
 	"github.com/max-weis/plantdiary/internal/database"
@@ -12,6 +13,13 @@ type userEntity struct {
 	ID           string `db:"id"`
 	Email        string `db:"email"`
 	PasswordHash string `db:"password_hash"`
+}
+
+type refreshTokenEntity struct {
+	Token     string    `db:"token"`
+	UserID    string    `db:"user_id"`
+	ExpiresAt time.Time `db:"expires_at"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 var (
@@ -54,4 +62,32 @@ func GetUserByID(ctx context.Context, id string) (*userEntity, error) {
 	}
 
 	return &user, nil
+}
+
+// StoreRefreshToken stores a refresh token in the database
+func StoreRefreshToken(ctx context.Context, token *refreshTokenEntity) error {
+	_, err := database.FromContext(ctx).NamedExecContext(ctx,
+		"INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES (:token, :user_id, :expires_at)",
+		token)
+	return err
+}
+
+// GetRefreshToken gets a refresh token from the database
+func GetRefreshToken(ctx context.Context, token string) (*refreshTokenEntity, error) {
+	var rt refreshTokenEntity
+	err := database.FromContext(ctx).GetContext(ctx, &rt,
+		"SELECT * FROM refresh_tokens WHERE token = $1",
+		token)
+	if err != nil {
+		return nil, err
+	}
+	return &rt, nil
+}
+
+// DeleteRefreshToken deletes a refresh token from the database
+func DeleteRefreshToken(ctx context.Context, token string) error {
+	_, err := database.FromContext(ctx).ExecContext(ctx,
+		"DELETE FROM refresh_tokens WHERE token = $1",
+		token)
+	return err
 }

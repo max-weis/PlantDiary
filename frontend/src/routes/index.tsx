@@ -28,10 +28,12 @@ function HomePage() {
     return null // Will redirect in useEffect
   }
 
+  console.log(isAuthenticated, isLoading, user)
+
   return (
     <div className="min-h-screen p-8">
       <h1 className="text-2xl font-bold mb-4">Welcome to Plant Diary</h1>
-      <p>You are logged in with {user?.email}!</p>
+      <p>You are logged in with {user.email}!</p>
     </div>
   )
 }
