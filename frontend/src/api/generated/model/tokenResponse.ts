@@ -6,8 +6,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export * from "./error";
-export * from "./loginRequest";
-export * from "./signupRequest";
-export * from "./tokenResponse";
-export * from "./user";
+export interface TokenResponse {
+  access_token?: string;
+  refresh_token?: string;
+}

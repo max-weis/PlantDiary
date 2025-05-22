@@ -1,53 +1,159 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
-import { getAuth } from '../api/generated/auth/auth'
-import type { LoginRequest, SignupRequest } from '../api/generated/model'
+import { getAuth } from '@/api/generated/auth/auth';
+import type { LoginRequest } from '@/api/generated/model/loginRequest';
+import type { SignupRequest } from '@/api/generated/model/signupRequest';
+import { jwtDecode } from 'jwt-decode';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+// Types for decoded JWT
+interface JwtPayload {
+  user_id: string;
+  email: string;
+  exp: number;
+}
+
+export interface User {
+  user_id: string;
+  email: string;
+  exp: number;
+}
+
+// Helper to read a named cookie
+function getCookie(name: string): string | null {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    const cookieValue = parts.pop()!.split(';').shift()!;
+    return cookieValue;
+  }
+  return null;
+}
+
+// Helper to set a cookie
+function setCookie(name: string, value: string, expiresInMinutes: number = 15) {
+  const date = new Date();
+  date.setTime(date.getTime() + expiresInMinutes * 60 * 1000);
+  const expires = `expires=${date.toUTCString()}`;
+  document.cookie = `${name}=${value};${expires};path=/`;
+}
 
 export function useAuth() {
-  const queryClient = useQueryClient()
-  const navigate = useNavigate()
-  const { login, signup } = getAuth()
+  const { login: apiLogin, signup: apiSignup, logout: apiLogout } = getAuth();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const initialLoadDone = useRef(false);
 
-  const { data: user, isLoading } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: () => fetch('http://localhost:8000/api/me', { 
-      credentials: 'include'  // This ensures cookies are sent
-    }).then(res => {
-      if (!res.ok) {
-        throw new Error('Not authenticated')
+  // Load user from token in cookie
+  useEffect(() => {
+    if (initialLoadDone.current) return;
+    
+    const loadUser = () => {
+      const token = getCookie('access_token');
+      if (!token) {
+        setUser(null);
+        setLoading(false);
+        return;
       }
-      return res.json()
-    }),
-    retry: false,
-  })
-
-  const loginMutation = useMutation({
-    mutationFn: (request: LoginRequest) => login(request),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
-      navigate({ to: '/' })
-    },
-  })
-
-  const signupMutation = useMutation({
-    mutationFn: (request: SignupRequest) => signup(request),
-    onSuccess: () => {
-      // After signup, automatically log in
-      if (signupMutation.variables) {
-        loginMutation.mutate(signupMutation.variables)
+      
+      try {
+        const decoded = jwtDecode<JwtPayload>(token);
+        
+        // Check if token is expired
+        if (decoded.exp * 1000 < Date.now()) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        
+        setUser({
+          user_id: decoded.user_id,
+          email: decoded.email,
+          exp: decoded.exp,
+        });
+      } catch (err) {
+        console.error('Failed to decode JWT', err);
+        setUser(null);
       }
-    },
-  })
+      
+      setLoading(false);
+    };
+    
+    loadUser();
+    initialLoadDone.current = true;
+  }, []);
 
-  return {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    login: loginMutation.mutate,
-    signup: signupMutation.mutate,
-    isLoggingIn: loginMutation.isPending,
-    isSigningUp: signupMutation.isPending,
-    loginError: loginMutation.error,
-    signupError: signupMutation.error,
-  }
+  const login = useCallback(async (email: string, password: string) => {
+    setLoading(true);
+    
+    try {
+      const creds: LoginRequest = { email, password };
+      const response = await apiLogin(creds);
+      
+      // Manually set cookies from response
+      if (response.access_token) {
+        setCookie('access_token', response.access_token, 15); // 15 minutes
+      }
+      
+      if (response.refresh_token) {
+        setCookie('refresh_token', response.refresh_token, 7 * 24 * 60); // 7 days
+      }
+      
+      // Set user directly from the token
+      if (response.access_token) {
+        try {
+          const decoded = jwtDecode<JwtPayload>(response.access_token);
+          setUser({
+            user_id: decoded.user_id,
+            email: decoded.email,
+            exp: decoded.exp,
+          });
+        } catch (e) {
+          console.error('Failed to decode token after login', e);
+          setUser(null);
+        }
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Login failed:', err);
+      setLoading(false);
+    }
+  }, [apiLogin]);
+
+  const signup = useCallback(async (email: string, password: string) => {
+    setLoading(true);
+    
+    try {
+      const creds: SignupRequest = { email, password };
+      await apiSignup(creds);
+      await login(email, password);
+    } catch (err) {
+      console.error('Signup failed:', err);
+      setLoading(false);
+    }
+  }, [apiSignup, login]);
+
+  const logout = useCallback(async () => {
+    setLoading(true);
+    
+    try {
+      await apiLogout();
+    } catch (err) {
+      console.error('Logout API call failed:', err);
+    }
+    
+    // Clear cookies manually
+    document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    
+    setUser(null);
+    setLoading(false);
+  }, [apiLogout]);
+
+  return { 
+    user, 
+    loading, 
+    login, 
+    signup, 
+    logout
+  };
 }

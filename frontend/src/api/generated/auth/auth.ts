@@ -5,7 +5,7 @@
  * Simple email/password authentication API using JWT in HTTP-only cookies.
  * OpenAPI spec version: 1.0.0
  */
-import type { LoginRequest, SignupRequest } from ".././model";
+import type { LoginRequest, SignupRequest, TokenResponse } from ".././model";
 import { customInstance } from "../../mutator/custom-instance";
 
 export const getAuth = () => {
@@ -24,18 +24,39 @@ export const getAuth = () => {
    * @summary Authenticate a user and set session cookie
    */
   const login = (loginRequest: LoginRequest) => {
-    return customInstance<void>({
+    return customInstance<TokenResponse>({
       url: `/api/login`,
       method: "POST",
       headers: { "Content-Type": "application/json" },
       data: loginRequest,
     });
   };
-  return { signup, login };
+  /**
+   * @summary Refresh access token using refresh token
+   */
+  const refreshToken = () => {
+    return customInstance<TokenResponse>({
+      url: `/api/refresh`,
+      method: "POST",
+    });
+  };
+  /**
+   * @summary Logout user and invalidate refresh token
+   */
+  const logout = () => {
+    return customInstance<void>({ url: `/api/logout`, method: "POST" });
+  };
+  return { signup, login, refreshToken, logout };
 };
 export type SignupResult = NonNullable<
   Awaited<ReturnType<ReturnType<typeof getAuth>["signup"]>>
 >;
 export type LoginResult = NonNullable<
   Awaited<ReturnType<ReturnType<typeof getAuth>["login"]>>
+>;
+export type RefreshTokenResult = NonNullable<
+  Awaited<ReturnType<ReturnType<typeof getAuth>["refreshToken"]>>
+>;
+export type LogoutResult = NonNullable<
+  Awaited<ReturnType<ReturnType<typeof getAuth>["logout"]>>
 >;
