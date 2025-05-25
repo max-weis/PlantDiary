@@ -68,11 +68,13 @@ export function LoginForm({ onSubmit, loading = false }: LoginFormProps) {
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}
               />
-              {field.state.meta.errors.length > 0 && (
-                <div className="text-red-500 text-sm">
-                  {field.state.meta.errors[0]}
-                </div>
-              )}
+              <div className="h-5">
+                {field.state.meta.errors.length > 0 && (
+                  <div className="text-red-500 text-sm">
+                    {field.state.meta.errors[0]}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </form.Field>
@@ -103,11 +105,13 @@ export function LoginForm({ onSubmit, loading = false }: LoginFormProps) {
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}
               />
-              {field.state.meta.errors.length > 0 && (
-                <div className="text-red-500 text-sm">
-                  {field.state.meta.errors[0]}
-                </div>
-              )}
+              <div className="h-5">
+                {field.state.meta.errors.length > 0 && (
+                  <div className="text-red-500 text-sm">
+                    {field.state.meta.errors[0]}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </form.Field>
