@@ -24,6 +24,7 @@ func NewApp(cfg *config.Config) (*app, error) {
 	}
 
 	e := http.NewEcho(db)
+	http.RegisterStatusRoutes(e)
 
 	auth.NewAuthRouter(cfg, e)
 

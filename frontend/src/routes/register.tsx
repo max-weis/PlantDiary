@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../lib/auth'
+import { toast } from 'sonner'
 
 export const Route = createFileRoute('/register')({
   component: RegisterPage,
@@ -16,7 +17,8 @@ function RegisterPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      navigate({ to: '/' })
+      toast("Account created successfully.")
+      navigate({ to: '/login' })
     }
   }, [loading, user, navigate])
 
@@ -64,6 +66,7 @@ function RegisterPage() {
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                data-testid="email-input"
               />
             </div>
             <div>
@@ -80,6 +83,7 @@ function RegisterPage() {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                data-testid="password-input"
               />
             </div>
             <div>
@@ -96,6 +100,7 @@ function RegisterPage() {
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                data-testid="confirm-password-input"
               />
             </div>
           </div>
@@ -111,6 +116,7 @@ function RegisterPage() {
               type="submit"
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              data-testid="create-account-button"
             >
               {loading ? 'Creating account...' : 'Create account'}
             </button>

@@ -56,7 +56,7 @@ export function Navigation() {
                     ) : (
                         <>
                             <Link to="/login">
-                                <Button variant="ghost" size="sm">
+                                <Button variant="ghost" size="sm" data-testid="login-link">
                                     Login
                                 </Button>
                             </Link>

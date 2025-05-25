@@ -51,6 +51,7 @@ function LoginPage() {
               </label>
               <input
                 id="email-address"
+                data-testid="email-input"
                 name="email"
                 type="email"
                 autoComplete="email"
@@ -67,6 +68,7 @@ function LoginPage() {
               </label>
               <input
                 id="password"
+                data-testid="password-input"
                 name="password"
                 type="password"
                 autoComplete="current-password"

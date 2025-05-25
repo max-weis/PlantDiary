@@ -23,7 +23,7 @@ function HomePage() {
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
                 <Link to="/register">
-                  <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700">
+                  <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700" data-testid="get-started">
                     Get Started
                   </Button>
                 </Link>
