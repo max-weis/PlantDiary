@@ -18,6 +18,7 @@ type authRouter struct {
 
 type claims struct {
 	UserID string `json:"user_id"`
+	Username string `json:"username"`
 	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
@@ -46,6 +47,7 @@ func (a *authRouter) Login(ctx echo.Context) error {
 	accessClaims := &claims{
 		UserID: user.ID,
 		Email:  user.Email,
+		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(accessExp),
 		},
@@ -118,6 +120,7 @@ func (a *authRouter) RefreshToken(ctx echo.Context) error {
 	accessClaims := &claims{
 		UserID: user.ID,
 		Email:  user.Email,
+		Username: user.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(accessExp),
 		},
@@ -190,10 +193,17 @@ func (a *authRouter) Signup(ctx echo.Context) error {
 	user := userEntity{
 		ID:           uuid.New().String(),
 		Email:        string(req.Email),
+		Username:     req.Username,
 		PasswordHash: string(hashedPassword),
 	}
 
 	if err := CreateUser(ctx.Request().Context(), &user); err != nil {
+		if err == ErrEmailAlreadyExists {
+			return echo.NewHTTPError(409, "Email already in use")
+		}
+		if err == ErrUsernameAlreadyExists {
+			return echo.NewHTTPError(409, "Username already in use")
+		}
 		return echo.NewHTTPError(500, "Failed to create user")
 	}
 

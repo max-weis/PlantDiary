@@ -3,12 +3,16 @@ import { useForm } from '@tanstack/react-form'
 import { z } from 'zod'
 
 interface RegisterFormProps {
-  onSubmit: (email: string, password: string) => void
+  onSubmit: (email: string, username: string, password: string) => void
   loading?: boolean
 }
 
 const registerSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
+  username: z.string()
+    .min(3, 'Username must be at least 3 characters')
+    .max(50, 'Username must be less than 50 characters')
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -20,13 +24,14 @@ export function RegisterForm({ onSubmit, loading = false }: RegisterFormProps) {
   const form = useForm({
     defaultValues: {
       email: '',
+      username: '',
       password: '',
       confirmPassword: '',
     },
     onSubmit: async ({ value }) => {
       const result = registerSchema.safeParse(value)
       if (result.success) {
-        onSubmit(value.email, value.password)
+        onSubmit(value.email, value.username, value.password)
       }
     },
   })
@@ -69,6 +74,46 @@ export function RegisterForm({ onSubmit, loading = false }: RegisterFormProps) {
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="m@example.com"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+              />
+              <div className="h-5">
+                {field.state.meta.errors.length > 0 && (
+                  <div className="text-red-500 text-sm">
+                    {field.state.meta.errors[0]}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </form.Field>
+
+        <form.Field
+          name="username"
+          validators={{
+            onChange: ({ value }) => {
+              if (value.length < 3) return 'Username must be at least 3 characters'
+              if (value.length > 50) return 'Username must be less than 50 characters'
+              if (!/^[a-zA-Z0-9_]+$/.test(value)) return 'Username can only contain letters, numbers, and underscores'
+              return undefined
+            },
+          }}
+        >
+          {(field) => (
+            <div className="space-y-2">
+              <label htmlFor="username" className="text-sm font-medium text-gray-700">
+                Username
+              </label>
+              <input
+                id="username"
+                data-testid="username-input"
+                name={field.name}
+                type="text"
+                autoComplete="username"
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="johndoe"
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}

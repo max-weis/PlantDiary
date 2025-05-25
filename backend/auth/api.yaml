@@ -107,11 +107,17 @@ components:
       type: object
       required:
         - email
+        - username
         - password
       properties:
         email:
           type: string
           format: email
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: '^[a-zA-Z0-9_]+$'
         password:
           type: string
           format: password

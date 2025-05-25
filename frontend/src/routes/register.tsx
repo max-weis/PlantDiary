@@ -20,6 +20,10 @@ function RegisterPage() {
     }
   }, [loading, user, navigate])
 
+  const handleSignup = (email: string, username: string, password: string) => {
+    signup(email, username, password)
+  }
+
   if (loading) return <Loading message="Creating account..." />
 
   return (
@@ -28,7 +32,7 @@ function RegisterPage() {
         <div className="flex">
           {/* Left side - Register Form */}
           <div className="w-1/2 p-8 lg:p-16 flex items-center justify-center">
-            <RegisterForm onSubmit={signup} loading={loading} />
+            <RegisterForm onSubmit={handleSignup} loading={loading} />
           </div>
           
           {/* Right side - Image */}

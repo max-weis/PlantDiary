@@ -12,7 +12,7 @@ function RouteComponent() {
     <div>
       <div>
         <h1 className="text-2xl font-bold tracking-wide">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to your dashboard, {user?.email}!</p>
+        <p className="text-muted-foreground">Welcome to your dashboard, {user?.username}!</p>
       </div>
     </div>
   )

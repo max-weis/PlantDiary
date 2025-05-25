@@ -8,12 +8,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 interface JwtPayload {
   user_id: string;
   email: string;
+  username: string;
   exp: number;
 }
 
 export interface User {
   user_id: string;
   email: string;
+  username: string;
   exp: number;
 }
 
@@ -67,6 +69,7 @@ export function useAuth() {
         setUser({
           user_id: decoded.user_id,
           email: decoded.email,
+          username: decoded.username,
           exp: decoded.exp,
         });
       } catch (err) {
@@ -103,6 +106,7 @@ export function useAuth() {
           setUser({
             user_id: decoded.user_id,
             email: decoded.email,
+            username: decoded.username,
             exp: decoded.exp,
           });
         } catch (e) {
@@ -116,11 +120,11 @@ export function useAuth() {
     }
   }, [apiLogin]);
 
-  const signup = useCallback(async (email: string, password: string) => {
+  const signup = useCallback(async (email: string, username: string, password: string) => {
     setLoading(true);
     
     try {
-      const creds: SignupRequest = { email, password };
+      const creds: SignupRequest = { email, username, password };
       await apiSignup(creds);
       await login(email, password);
     } catch (err) {

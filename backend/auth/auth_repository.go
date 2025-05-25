@@ -12,6 +12,7 @@ import (
 type userEntity struct {
 	ID           string `db:"id"`
 	Email        string `db:"email"`
+	Username     string `db:"username"`
 	PasswordHash string `db:"password_hash"`
 }
 
@@ -25,15 +26,24 @@ type refreshTokenEntity struct {
 var (
 	// ErrEmailAlreadyExists is returned when a user with the same email already exists
 	ErrEmailAlreadyExists = errors.New("email already exists")
+	// ErrUsernameAlreadyExists is returned when a user with the same username already exists
+	ErrUsernameAlreadyExists = errors.New("username already exists")
 )
 
 // CreateUser creates a new user in the database
 func CreateUser(ctx context.Context, user *userEntity) error {
-	_, err := database.FromContext(ctx).NamedExecContext(ctx, "INSERT INTO users (id, email, password_hash) VALUES (:id, :email, :password_hash)", user)
+	_, err := database.FromContext(ctx).NamedExecContext(ctx, "INSERT INTO users (id, email, username, password_hash) VALUES (:id, :email, :username, :password_hash)", user)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			return ErrEmailAlreadyExists
+			// Check which constraint was violated
+			if pqErr.Constraint == "users_email_key" {
+				return ErrEmailAlreadyExists
+			}
+			if pqErr.Constraint == "users_username_key" {
+				return ErrUsernameAlreadyExists
+			}
+			return ErrEmailAlreadyExists // Default to email error for backward compatibility
 		}
 
 		return err
@@ -46,6 +56,17 @@ func CreateUser(ctx context.Context, user *userEntity) error {
 func GetUserByEmail(ctx context.Context, email string) (*userEntity, error) {
 	var user userEntity
 	err := database.FromContext(ctx).GetContext(ctx, &user, "SELECT * FROM users WHERE email = $1", email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+// GetUserByUsername gets a user from the database by username
+func GetUserByUsername(ctx context.Context, username string) (*userEntity, error) {
+	var user userEntity
+	err := database.FromContext(ctx).GetContext(ctx, &user, "SELECT * FROM users WHERE username = $1", username)
 	if err != nil {
 		return nil, err
 	}

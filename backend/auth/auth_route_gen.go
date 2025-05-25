@@ -23,6 +23,7 @@ type LoginRequest struct {
 type SignupRequest struct {
 	Email    openapi_types.Email `json:"email"`
 	Password string              `json:"password"`
+	Username string              `json:"username"`
 }
 
 // TokenResponse defines model for TokenResponse.

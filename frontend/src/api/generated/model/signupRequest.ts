@@ -9,4 +9,10 @@
 export interface SignupRequest {
   email: string;
   password: string;
+  /**
+   * @minLength 3
+   * @maxLength 50
+   * @pattern ^[a-zA-Z0-9_]+$
+   */
+  username: string;
 }
