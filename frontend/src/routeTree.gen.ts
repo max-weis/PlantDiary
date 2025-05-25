@@ -16,6 +16,7 @@ import { Route as LoginImport } from './routes/login'
 import { Route as AppImport } from './routes/_app'
 import { Route as IndexImport } from './routes/index'
 import { Route as AppDashboardImport } from './routes/_app.dashboard'
+import { Route as AppPlantsNewImport } from './routes/_app.plants.new'
 
 // Create/Update Routes
 
@@ -45,6 +46,12 @@ const IndexRoute = IndexImport.update({
 const AppDashboardRoute = AppDashboardImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppPlantsNewRoute = AppPlantsNewImport.update({
+  id: '/plants/new',
+  path: '/plants/new',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -87,6 +94,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardImport
       parentRoute: typeof AppImport
     }
+    '/_app/plants/new': {
+      id: '/_app/plants/new'
+      path: '/plants/new'
+      fullPath: '/plants/new'
+      preLoaderRoute: typeof AppPlantsNewImport
+      parentRoute: typeof AppImport
+    }
   }
 }
 
@@ -94,10 +108,12 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
+  AppPlantsNewRoute: typeof AppPlantsNewRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
+  AppPlantsNewRoute: AppPlantsNewRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -108,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/dashboard': typeof AppDashboardRoute
+  '/plants/new': typeof AppPlantsNewRoute
 }
 
 export interface FileRoutesByTo {
@@ -116,6 +133,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/dashboard': typeof AppDashboardRoute
+  '/plants/new': typeof AppPlantsNewRoute
 }
 
 export interface FileRoutesById {
@@ -125,14 +143,22 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/plants/new': typeof AppPlantsNewRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '' | '/login' | '/register' | '/dashboard'
+  fullPaths: '/' | '' | '/login' | '/register' | '/dashboard' | '/plants/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/login' | '/register' | '/dashboard'
-  id: '__root__' | '/' | '/_app' | '/login' | '/register' | '/_app/dashboard'
+  to: '/' | '' | '/login' | '/register' | '/dashboard' | '/plants/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/login'
+    | '/register'
+    | '/_app/dashboard'
+    | '/_app/plants/new'
   fileRoutesById: FileRoutesById
 }
 
@@ -172,7 +198,8 @@ export const routeTree = rootRoute
     "/_app": {
       "filePath": "_app.tsx",
       "children": [
-        "/_app/dashboard"
+        "/_app/dashboard",
+        "/_app/plants/new"
       ]
     },
     "/login": {
@@ -183,6 +210,10 @@ export const routeTree = rootRoute
     },
     "/_app/dashboard": {
       "filePath": "_app.dashboard.tsx",
+      "parent": "/_app"
+    },
+    "/_app/plants/new": {
+      "filePath": "_app.plants.new.tsx",
       "parent": "/_app"
     }
   }

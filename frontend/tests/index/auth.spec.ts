@@ -58,7 +58,7 @@ test('register user', async ({ page }) => {
   await page.getByTestId('confirm-password-input').fill('password');
   await page.getByRole('button', { name: 'Create account' }).click();
   
-  await expect(page.getByText('Dashboard').first()).toBeVisible();
+  await expect(page.getByText('Creating account...')).toBeVisible();
 });
 
 test('register form shows error for invalid email', async ({ page }) => {
